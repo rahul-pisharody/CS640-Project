@@ -77,7 +77,6 @@ class DataManager(object):
 		labels = pd.read_csv(self.dataset_path)
 		files = labels['Filename'].tolist()
 		emotions = pd.get_dummies(labels['Expression Sentiment']).as_matrix()
-		print(emotions)
 		width, height = 48, 48
 		faces = []
 		emos = []
@@ -94,8 +93,6 @@ class DataManager(object):
 		emos = np.asarray(emos)
 		faces = np.asarray(faces)
 		faces = np.expand_dims(faces,-1)
-		mapping = {'Positive':0,'Neutral':1,'Negative':2}
-		labels = labels.replace({'Expression Sentiment':mapping})
 		return faces, emos
 
 	def _load_KDEF(self):
