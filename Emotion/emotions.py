@@ -29,7 +29,7 @@ emotion_classifier = load_model(emotion_model_path)
 emotion_target_size = emotion_classifier.input_shape[1:3]
 
 threshold = 0.7
-dataset_path = "./test/"
+dataset_path = "/projectnb/cs640grp/640ProjectData/"
 
 # starting lists for calculating modes
 emotion_window = []
@@ -61,7 +61,7 @@ for ind in (np.random.choice(len(labels), total_test, False)):
 		true_net+=1
 	else:
 		true_pos+=1
-	cap = cv2.VideoCapture(dataset_path+labels['Filename'][ind])
+	cap = cv2.VideoCapture(dataset_path+'presidential_videos/'+labels['Filename'][ind])
 	total_frames=0
 	no_frames_neg = no_frames_pos = no_frames_net =0
 	while cap.isOpened(): # True:
