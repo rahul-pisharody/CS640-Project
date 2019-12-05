@@ -16,8 +16,8 @@ from utils.datasets import split_data
 from utils.preprocessor import preprocess_input
 
 # parameters
-batch_size = 2
-num_epochs = 10
+batch_size = 32
+num_epochs = 100
 input_shape = (64, 64, 1)
 validation_split = .2
 verbose = 1
@@ -54,7 +54,7 @@ for dataset_name in datasets:
 								  patience=int(patience/4), verbose=1)
 	trained_models_path = base_path + dataset_name + '_mini_XCEPTION'
 	model_names = trained_models_path + '.{epoch:02d}.hdf5'
-	print("MMMMMM---"+model_names)
+	print("YAY---"+model_names)
 	model_checkpoint = ModelCheckpoint(model_names, 'val_loss', verbose=1,
 													save_best_only=True)
 	callbacks = [model_checkpoint, csv_logger, early_stop, reduce_lr]
@@ -64,7 +64,9 @@ for dataset_name in datasets:
 	faces, emotions = data_loader.get_data()
 	faces = preprocess_input(faces)
 	num_samples, num_classes = emotions.shape
-	train_data, val_data = split_data(faces, emotions, validation_split)
+	train_data, val_data = split_data(faces, emotions, 0.2)
 	train_faces, train_emotions = train_data
-	model.fit(train_faces,train_emotions,epochs=num_epochs, verbose=1, callbacks=callbacks,
-						validation_split=0.2)
+	print("THIS")
+	# model.fit(train_faces,train_emotions,epochs=num_epochs, verbose=1, callbacks=callbacks, validation_split=0.2)
+	model.fit_generator(data_generator.flow(train_faces, train_emotions, batch_size), steps_per_epoch=len(train_faces) / batch_size, epochs=num_epochs, verbose=1, callbacks=callbacks, validation_data=val_data)
+	

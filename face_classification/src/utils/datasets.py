@@ -20,7 +20,7 @@ class DataManager(object):
 		elif self.dataset_name == 'imdb':
 			self.dataset_path = '../datasets/imdb_crop/imdb.mat'
 		elif self.dataset_name == 'presi':
-			self.dataset_path = '../datasets/presi/training/train_labels.csv'
+			self.dataset_path = '../datasets/presi/gray_dataset/GrayLabels.csv'
 		elif self.dataset_name == 'KDEF':
 			self.dataset_path = '../datasets/KDEF/'
 		else:
@@ -76,19 +76,27 @@ class DataManager(object):
 	def _load_presi(self):
 		labels = pd.read_csv(self.dataset_path)
 		files = labels['Filename'].tolist()
+		emotions = pd.get_dummies(labels['Expression Sentiment']).as_matrix()
+		print(emotions)
 		width, height = 48, 48
 		faces = []
-		for fil in files:
-			face = cv2.imread('../datasets/presi/training/'+fil,0)
-			print('../datasets/presi/training/'+fil,type(face))
+		emos = []
+		
+		for i in np.random.choice(len(files),25000,False):
+			fil = files[i]
+			face = cv2.imread('../datasets/presi/gray_dataset/'+fil,0)
+			if face is None:
+				continue
+			# print('../datasets/presi/gray_dataset/'+fil)
 			face = cv2.resize(face.astype('uint8'), self.image_size)
 			faces.append(face.astype('float32'))
+			emos.append(emotions[i])
+		emos = np.asarray(emos)
 		faces = np.asarray(faces)
 		faces = np.expand_dims(faces,-1)
 		mapping = {'Positive':0,'Neutral':1,'Negative':2}
 		labels = labels.replace({'Expression Sentiment':mapping})
-		emotions = pd.get_dummies(labels['Expression Sentiment']).as_matrix()
-		return faces, emotions
+		return faces, emos
 
 	def _load_KDEF(self):
 		class_to_arg = get_class_to_arg(self.dataset_name)

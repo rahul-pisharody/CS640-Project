@@ -1,1 +1,4 @@
 face_classification/trained_models
+face_classification/datasets/presi/training
+face_classification/datasets/presi/gray_dataset
+Emotion/demo
