@@ -1,4 +1,5 @@
 import cv2
+import os
 import numpy as np
 import pandas as pd
 from keras.models import load_model
@@ -17,7 +18,7 @@ from confusion import getConfusionMatrix, getPerformanceScores
 USE_WEBCAM = False # If false, loads video file source
 
 # parameters for loading data and images
-emotion_model_path = './models/presi_simple_CNN.99.hdf5'
+emotion_model_path = './models/presi_mini_XCEPTION.93_new.hdf5'
 emotion_labels = get_labels('presi')
 
 # hyper-parameters for bounding boxes shape
@@ -49,6 +50,7 @@ video_capture = cv2.VideoCapture(0)
 # else:
 	# cap = cv2.VideoCapture('./demo/joe.SFAHcLh5Dl0.15.mp4') # Video file source
 cap = None
+
 labels = pd.read_csv(dataset_path+'Labels.csv')
 
 
@@ -62,15 +64,13 @@ mapp = {'Negative':0,'Neutral':1,'Positive':2}
 y_true=[]
 y_pred=[]
 
-for ind in (np.random.choice(len(labels), total_test, False)):
-	cur_label=mapp[labels['Expression Sentiment'][ind]]
-	# if cur_label=="Negative":
-		# true_neg+=1
-	# elif cur_label=="Neutral":
-		# true_net+=1
-	# else:
-		# true_pos+=1
-	cap = cv2.VideoCapture(dataset_path+labels['Filename'][ind])
+files = os.listdir(dataset_path+'test_vids/')
+
+for file in files:
+	cur_label = mapp[labels.loc[labels['Filename']==file].iloc[0]['Expression Sentiment']]
+	# cur_label=mapp[labels['Expression Sentiment'][ind]]
+	
+	cap = cv2.VideoCapture(dataset_path+'test_vids/'+file)
 	total_frames=0
 	no_frames_neg = no_frames_pos = no_frames_net =0
 	while cap.isOpened(): # True:
@@ -154,9 +154,10 @@ for ind in (np.random.choice(len(labels), total_test, False)):
 	else:
 		maj_emo = 0
 	print("--------Video "+str(count)+"--------")
+	print("Filename: ",file)
 	y_true.append(cur_label)
 	y_pred.append(maj_emo)
-	# print(maj_emo,labels['Expression Sentiment'][ind])
+	print(maj_emo,cur_label)
 	# if maj_emo==cur_label:
 		# if cur_label=="Negative":
 			# hit_neg+=1

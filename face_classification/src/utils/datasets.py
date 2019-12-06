@@ -162,6 +162,9 @@ def split_imdb_data(ground_truth_data, validation_split=.2, do_shuffle=False):
 
 
 def split_data(x, y, validation_split=.2):
+	assert len(x)==len(y)
+	p = np.random.permutation(len(x))
+	x,y = x[p], y[p]
 	num_samples = len(x)
 	num_train_samples = int((1 - validation_split)*num_samples)
 	train_x = x[:num_train_samples]

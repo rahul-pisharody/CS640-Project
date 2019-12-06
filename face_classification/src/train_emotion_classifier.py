@@ -17,7 +17,7 @@ from utils.preprocessor import preprocess_input
 
 # parameters
 batch_size = 32
-num_epochs = 100
+num_epochs = 200
 input_shape = (64, 64, 1)
 validation_split = .2
 verbose = 1
@@ -66,7 +66,7 @@ for dataset_name in datasets:
 	num_samples, num_classes = emotions.shape
 	train_data, val_data = split_data(faces, emotions, 0.2)
 	train_faces, train_emotions = train_data
-	print("THIS")
+	print("Training")
 	# model.fit(train_faces,train_emotions,epochs=num_epochs, verbose=1, callbacks=callbacks, validation_split=0.2)
 	model.fit_generator(data_generator.flow(train_faces, train_emotions, batch_size), steps_per_epoch=len(train_faces) / batch_size, epochs=num_epochs, verbose=1, callbacks=callbacks, validation_data=val_data)
 	

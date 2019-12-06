@@ -1,5 +1,8 @@
-face_classification/trained_models
+face_classification/trained_models/emotion_models/*.hdf5
+face_classification/src/utils/__pycache__
 face_classification/datasets/presi/training
 face_classification/datasets/presi/gray_dataset
+face_classification/datasets/presi/gray_dataset_backup.zip
 Emotion/demo
 Emotion/test
+*.pyc
