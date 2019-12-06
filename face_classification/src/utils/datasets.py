@@ -81,7 +81,7 @@ class DataManager(object):
 		faces = []
 		emos = []
 		
-		for i in np.random.choice(len(files),25000,False):
+		for i in range(len(files)):
 			fil = files[i]
 			face = cv2.imread('../datasets/presi/gray_dataset/'+fil,0)
 			if face is None:

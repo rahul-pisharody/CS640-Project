@@ -11,10 +11,13 @@ from utils.inference import apply_offsets
 from utils.inference import load_detection_model
 from utils.preprocessor import preprocess_input
 
+from confusion import getConfusionMatrix, getPerformanceScores
+
+
 USE_WEBCAM = False # If false, loads video file source
 
 # parameters for loading data and images
-emotion_model_path = './models/presi_mini_XCEPTION.98.hdf5'
+emotion_model_path = './models/presi_simple_CNN.99.hdf5'
 emotion_labels = get_labels('presi')
 
 # hyper-parameters for bounding boxes shape
@@ -29,7 +32,7 @@ emotion_classifier = load_model(emotion_model_path)
 emotion_target_size = emotion_classifier.input_shape[1:3]
 
 threshold = 0.7
-dataset_path = "/projectnb/cs640grp/640ProjectData/"
+dataset_path = "./test/"
 
 # starting lists for calculating modes
 emotion_window = []
@@ -53,15 +56,21 @@ total_test=200
 true_neg = true_net = true_pos = 0
 hit_neg = hit_net = hit_pos = 0
 count=1
+
+mapp = {'Negative':0,'Neutral':1,'Positive':2}
+
+y_true=[]
+y_pred=[]
+
 for ind in (np.random.choice(len(labels), total_test, False)):
-	cur_label=labels['Expression Sentiment'][ind]
-	if cur_label=="Negative":
-		true_neg+=1
-	elif cur_label=="Neutral":
-		true_net+=1
-	else:
-		true_pos+=1
-	cap = cv2.VideoCapture(dataset_path+'presidential_videos/'+labels['Filename'][ind])
+	cur_label=mapp[labels['Expression Sentiment'][ind]]
+	# if cur_label=="Negative":
+		# true_neg+=1
+	# elif cur_label=="Neutral":
+		# true_net+=1
+	# else:
+		# true_pos+=1
+	cap = cv2.VideoCapture(dataset_path+labels['Filename'][ind])
 	total_frames=0
 	no_frames_neg = no_frames_pos = no_frames_net =0
 	while cap.isOpened(): # True:
@@ -94,7 +103,9 @@ for ind in (np.random.choice(len(labels), total_test, False)):
 			emotion_label_arg = np.argmax(emotion_prediction)
 			emotion_text = emotion_labels[emotion_label_arg]
 			emotion_window.append(emotion_text+" "+str(round(emotion_probability, 2)))
-
+			
+			
+			
 			if len(emotion_window) > frame_window:
 				emotion_window.pop(0)
 			try:
@@ -133,30 +144,33 @@ for ind in (np.random.choice(len(labels), total_test, False)):
 		
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
-	maj_emo = "Neutral"
+	maj_emo = 1
 	total_face_frames=no_frames_neg+no_frames_pos+no_frames_net
 	# print(no_frames_pos,no_frames_neg,no_frames_net,total_face_frames)
 	if no_frames_net>=0.7*total_face_frames:
-		maj_emo = "Neutral"
+		maj_emo = 1
 	elif no_frames_pos>=no_frames_net:
-		maj_emo = "Positive"
+		maj_emo = 2
 	else:
-		maj_emo = "Negative"
+		maj_emo = 0
 	print("--------Video "+str(count)+"--------")
-	print(maj_emo,labels['Expression Sentiment'][ind])
-	if maj_emo==cur_label:
-		if cur_label=="Negative":
-			hit_neg+=1
-		elif cur_label=="Neutral":
-			hit_net+=1
-		else:
-			hit_pos+=1
+	y_true.append(cur_label)
+	y_pred.append(maj_emo)
+	# print(maj_emo,labels['Expression Sentiment'][ind])
+	# if maj_emo==cur_label:
+		# if cur_label=="Negative":
+			# hit_neg+=1
+		# elif cur_label=="Neutral":
+			# hit_net+=1
+		# else:
+			# hit_pos+=1
 	# print("Total Frames: ",total_frames)
 	cap.release()
 	count+=1
 	# cv2.destroyAllWindows()
-	
-print("Negative Acc.: ",(hit_neg/true_neg))	
-print("Neutral Acc.: ",(hit_net/true_net))	
-print("Positive Acc.: ",(hit_pos/true_pos))
-print("Accuracy: ",((hit_neg+hit_net+hit_pos)/total_test))
+
+print(getPerformanceScores(y_true,y_pred))
+# print("Negative Acc.: ",(hit_neg/true_neg))	
+# print("Neutral Acc.: ",(hit_net/true_net))	
+# print("Positive Acc.: ",(hit_pos/true_pos))
+# print("Accuracy: ",((hit_neg+hit_net+hit_pos)/total_test))
