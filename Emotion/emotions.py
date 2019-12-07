@@ -75,15 +75,12 @@ def heuristic_2(neg,net,pos):
 	return maj_emo
 
 
-# USE_WEBCAM = False # If false, loads video file source
-
 # parameters for loading data and images
 emotion_model_path_1 = './models/presi_CNN.197.hdf5'
 emotion_model_path_2 = './models/presi_big_XCEPTION.108.hdf5'
 emotion_labels = get_labels('presi')
 
 # hyper-parameters for bounding boxes shape
-frame_window = 10
 emotion_offsets = (20, 40)
 
 # loading models
@@ -97,8 +94,6 @@ emotion_target_size = emotion_classifier_1.input_shape[1:3]
 
 dataset_path = "./test/"
 
-# starting lists for calculating modes
-emotion_window = []
 
 video_capture = cv2.VideoCapture(0)
 
