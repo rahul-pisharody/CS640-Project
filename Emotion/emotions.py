@@ -15,10 +15,71 @@ from utils.preprocessor import preprocess_input
 from confusion import getConfusionMatrix, getPerformanceScores
 
 
-USE_WEBCAM = False # If false, loads video file source
+def updateFrames(neg,net,pos,emotion,prob):
+	threshold=0.7
+	if emotion == 0:
+		if prob>=threshold:
+			neg+=1
+	elif emotion == 2:
+		if prob>=threshold:
+			pos+=1
+	elif emotion == 1:
+		if prob>=threshold:
+			net+=1
+	
+	return neg,net,pos
+
+
+def heuristic_maj(neg,net,pos):
+	maj_emo = 1
+	total_face_frames=neg+net+pos
+	if total_face_frames==0:
+		return 1
+	# print(neg,net,pos,total_face_frames)
+	if pos>net:
+		if pos>=neg:
+			maj_emo = 2
+		else:
+			maj_emo = 0
+	elif neg>net:
+		if neg>pos:
+			maj_emo = 0
+		else:
+			maj_emo = 2
+	
+	return maj_emo
+
+def heuristic_1(neg,net,pos):
+	maj_emo = 1
+	total_face_frames=neg+net+pos
+	# print(neg,net,pos,total_face_frames)
+	if net>=0.7*total_face_frames:
+		maj_emo = 1
+	elif pos>=neg:
+		maj_emo = 2
+	else:
+		maj_emo = 0
+	
+	return maj_emo
+
+def heuristic_2(neg,net,pos):
+	total_face_frames=neg+net+pos
+	if total_face_frames==0:
+		return 1
+	# print(neg,net,pos,total_face_frames)
+	if neg>=0.3*total_face_frames or pos>=0.3*total_face_frames:
+		maj_emo = 0 if neg>pos else 2
+	else:
+		maj_emo = 1
+	
+	return maj_emo
+
+
+# USE_WEBCAM = False # If false, loads video file source
 
 # parameters for loading data and images
-emotion_model_path = './models/presi_mini_XCEPTION.93_new.hdf5'
+emotion_model_path_1 = './models/presi_CNN.197.hdf5'
+emotion_model_path_2 = './models/presi_big_XCEPTION.108.hdf5'
 emotion_labels = get_labels('presi')
 
 # hyper-parameters for bounding boxes shape
@@ -27,34 +88,26 @@ emotion_offsets = (20, 40)
 
 # loading models
 face_cascade = cv2.CascadeClassifier('./models/haarcascade_frontalface_default.xml')
-emotion_classifier = load_model(emotion_model_path)
+
+emotion_classifier_1 = load_model(emotion_model_path_1)
+emotion_classifier_2 = load_model(emotion_model_path_2)
 
 # getting input model shapes for inference
-emotion_target_size = emotion_classifier.input_shape[1:3]
+emotion_target_size = emotion_classifier_1.input_shape[1:3]
 
-threshold = 0.7
 dataset_path = "./test/"
 
 # starting lists for calculating modes
 emotion_window = []
 
-# starting video streaming
-
-# cv2.namedWindow('window_frame')
 video_capture = cv2.VideoCapture(0)
 
-# Select video or webcam feed
-# cap = None
-# if (USE_WEBCAM == True):
-	# cap = cv2.VideoCapture(0) # Webcam source
-# else:
-	# cap = cv2.VideoCapture('./demo/joe.SFAHcLh5Dl0.15.mp4') # Video file source
 cap = None
 
 labels = pd.read_csv(dataset_path+'Labels.csv')
 
 
-total_test=200
+max_test=300
 true_neg = true_net = true_pos = 0
 hit_neg = hit_net = hit_pos = 0
 count=1
@@ -62,17 +115,28 @@ count=1
 mapp = {'Negative':0,'Neutral':1,'Positive':2}
 
 y_true=[]
-y_pred=[]
+
+y_pred_m1_h0 = []
+y_pred_m1_h1 = []
+y_pred_m1_h2 = []
+
+y_pred_m2_h0 = []
+y_pred_m2_h1 = []
+y_pred_m2_h2 = []
 
 files = os.listdir(dataset_path+'test_vids/')
-
+c=0
 for file in files:
+	c+=1
+	if c>max_test:
+		break
 	cur_label = mapp[labels.loc[labels['Filename']==file].iloc[0]['Expression Sentiment']]
 	# cur_label=mapp[labels['Expression Sentiment'][ind]]
 	
 	cap = cv2.VideoCapture(dataset_path+'test_vids/'+file)
 	total_frames=0
-	no_frames_neg = no_frames_pos = no_frames_net =0
+	neg_1 = net_1 = pos_1 = 0
+	neg_2 = net_2 = pos_2 = 0
 	while cap.isOpened(): # True:
 		ret, bgr_image = cap.read()
 
@@ -98,80 +162,72 @@ for file in files:
 			gray_face = preprocess_input(gray_face, True)
 			gray_face = np.expand_dims(gray_face, 0)
 			gray_face = np.expand_dims(gray_face, -1)
-			emotion_prediction = emotion_classifier.predict(gray_face)
-			emotion_probability = np.max(emotion_prediction)
-			emotion_label_arg = np.argmax(emotion_prediction)
-			emotion_text = emotion_labels[emotion_label_arg]
-			emotion_window.append(emotion_text+" "+str(round(emotion_probability, 2)))
 			
 			
+			#-------Model 1 Prediction-------
+			emotion_prediction_1 = emotion_classifier_1.predict(gray_face)
+			emotion_probability_1 = np.max(emotion_prediction_1)
+			emotion_label_arg_1 = np.argmax(emotion_prediction_1)
 			
-			if len(emotion_window) > frame_window:
-				emotion_window.pop(0)
-			try:
-				emotion_mode = mode(emotion_window)
-			except:
-				continue
+			#-------Model 2 Prediction-------
+			emotion_prediction_2 = emotion_classifier_2.predict(gray_face)
+			emotion_probability_2 = np.max(emotion_prediction_2)
+			emotion_label_arg_2 = np.argmax(emotion_prediction_2)
+			
+			neg_1, net_1, pos_1 = updateFrames(neg_1, net_1, pos_1, emotion_label_arg_1, emotion_probability_1)
+			neg_2, net_2, pos_2 = updateFrames(neg_2, net_2, pos_2, emotion_label_arg_2, emotion_probability_2)
 
-			if emotion_text == 'Negative':
-				color = emotion_probability * np.asarray((255, 0, 0))
-				if emotion_probability>=threshold:
-					no_frames_neg+=1
-			elif emotion_text == 'Positive':
-				if emotion_probability>=threshold:
-					no_frames_pos+=1
-				color = emotion_probability * np.asarray((255, 255, 0))
-			elif emotion_text == 'Neutral':
-				if emotion_probability>=threshold:
-					no_frames_net+=1
-				color = emotion_probability * np.asarray((255, 255, 0))
-			else:
-				color = emotion_probability * np.asarray((0, 255, 255))
-
-			color = color.astype(int)
-			color = color.tolist()
-
-			draw_bounding_box(face_coordinates, rgb_image, color)
-			draw_text(face_coordinates, rgb_image, emotion_mode,
-					  color, 0, -45, 1, 1)
-
-		bgr_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2BGR)
-		# cv2.imshow('window_frame', bgr_image)
-		
-		# cv2.waitKey(100)
 		for i in range(5):
 			cap.grab()
 		
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
-	maj_emo = 1
-	total_face_frames=no_frames_neg+no_frames_pos+no_frames_net
-	# print(no_frames_pos,no_frames_neg,no_frames_net,total_face_frames)
-	if no_frames_net>=0.7*total_face_frames:
-		maj_emo = 1
-	elif no_frames_pos>=no_frames_net:
-		maj_emo = 2
-	else:
-		maj_emo = 0
+	
+	#Heuristics on Model 1
+	pred_emo_m1_h0 = heuristic_maj(neg_1,net_1,pos_1)
+	pred_emo_m1_h1 = heuristic_1(neg_1,net_1,pos_1)
+	pred_emo_m1_h2 = heuristic_2(neg_1,net_1,pos_1)
+	
+	#Heuristics on Model 2
+	pred_emo_m2_h0 = heuristic_maj(neg_2,net_2,pos_2)
+	pred_emo_m2_h1 = heuristic_1(neg_2,net_2,pos_2)
+	pred_emo_m2_h2 = heuristic_2(neg_2,net_2,pos_2)
+	
 	print("--------Video "+str(count)+"--------")
 	print("Filename: ",file)
 	y_true.append(cur_label)
-	y_pred.append(maj_emo)
-	print(maj_emo,cur_label)
-	# if maj_emo==cur_label:
-		# if cur_label=="Negative":
-			# hit_neg+=1
-		# elif cur_label=="Neutral":
-			# hit_net+=1
-		# else:
-			# hit_pos+=1
-	# print("Total Frames: ",total_frames)
+	
+	y_pred_m1_h0.append(pred_emo_m1_h0)
+	y_pred_m1_h1.append(pred_emo_m1_h1)
+	y_pred_m1_h2.append(pred_emo_m1_h2)
+	
+	y_pred_m2_h0.append(pred_emo_m2_h0)
+	y_pred_m2_h1.append(pred_emo_m2_h1)
+	y_pred_m2_h2.append(pred_emo_m2_h2)
+	
+	print(pred_emo_m1_h0,cur_label)
+	print(pred_emo_m2_h0,cur_label)
+	# print(pred_emo_m1_h1,cur_label)
+	# print(pred_emo_m1_h2,cur_label)
+	
 	cap.release()
 	count+=1
 	# cv2.destroyAllWindows()
 
-print(getPerformanceScores(y_true,y_pred))
-# print("Negative Acc.: ",(hit_neg/true_neg))	
-# print("Neutral Acc.: ",(hit_net/true_net))	
-# print("Positive Acc.: ",(hit_pos/true_pos))
-# print("Accuracy: ",((hit_neg+hit_net+hit_pos)/total_test))
+print("--------------Model 1 Majority Heuristic--------------")
+print(getPerformanceScores(y_true,y_pred_m1_h0))
+
+print("--------------Model 1 Heuristic 1--------------")
+print(getPerformanceScores(y_true,y_pred_m1_h1))
+
+print("--------------Model 1 Heuristic 2--------------")
+print(getPerformanceScores(y_true,y_pred_m1_h2))
+
+print("--------------Model 2 Majority Heuristic--------------")
+print(getPerformanceScores(y_true,y_pred_m2_h0))
+
+print("--------------Model 2 Heuristic 1--------------")
+print(getPerformanceScores(y_true,y_pred_m2_h1))
+
+print("--------------Model 2 Heuristic 2--------------")
+print(getPerformanceScores(y_true,y_pred_m2_h2))
